@@ -1,0 +1,334 @@
+# THE PROJECT BRIEF #
+
+# Project Name #
+
+REAL‑TIME AI‑POWERED TEXT‑TO‑3D MODEL GENERATOR
+
+# Product Description / Presentation #
+
+
+REAL‑TIME AI‑POWERED TEXT‑TO‑3D MODEL GENERATOR — Build Brief 
+
+Project Codename: VoxelVerve • 
+
+Product description / presentation
+VoxelVerve is a real‑time text‑to‑3D creation studio. Designers describe an object (“bronze steampunk pocket watch with exposed gears”), and the system produces progressive previews (point cloud → gaussian splats → mesh) that refine into game‑ready, PBR‑textured models. A coordinated crew of agents (Planner, Geometry, Texture, QA, Optimizer, Exporter) manages the pipeline with human‑in‑the‑loop approvals.
+What it does:
+•	Parses natural‑language briefs into structured constraints (scale, units, topology, poly budget, texture sets, LODs).
+•	Generates coarse geometry (implicit fields or splats) → converts to watertight mesh → unwraps UVs → bakes PBR textures (albedo/normal/roughness/metallic/AO).
+•	Streams interactive previews to the browser and supports live edits (prompt deltas, style refs, sculpt nudges, material tweaks).
+•	Auto‑optimizes for realtime (decimation, LOD chain, Draco/meshopt compression) and export targets (GLB/gLTF/USDZ; optional FBX/OBJ).
+•	Runs similarity/IP safety checks and produces a provenance bundle (seed, checkpoints, prompts, references, model versions).
+Why 3D teams love it:
+•	Sketch‑to‑asset in minutes with reproducible seeds and deterministic checkpoints.
+•	Game/AR‑ready outputs that slot into modern pipelines (Unity/Unreal/WebGL/WebGPU) with consistent PBR packs and LODs.
+•	Transparent safety & provenance so studios can ship with confidence.
+Framework (and why)
+LangGraph (agent orchestration) + LangChain (tools/RAG) + RAG (mandatory) with OpenAI + Claude. LangGraph gives deterministic, resumable, checkpointed flows with explicit human approval gates (mesh sign‑off, texture sign‑off, export sign‑off). LangChain unifies retrievers (stylebooks, reference libraries) and tool calling (geometry/UV/texture workers). RAG grounds decisions in user style guides, asset libraries, and naming/taxonomy rules. FE: Next.js 14 + React 18 + TypeScript + Tailwind + react‑three‑fiber. BE: FastAPI + PostgreSQL + pgvector + Redis, plus GPU worker pods for geometry/texture tasks. Deploy: Vercel/Render (+ GPU runner).
+1. BACKEND ARCHITECTURE (extensive)
+•	Core Services: FastAPI (async), Python 3.11 preferred, SQLAlchemy 2.0 (async), Pydantic v2, Uvicorn/Gunicorn.
+•	Auth & Tenancy: JWT access/refresh; optional SSO (OIDC/SAML); RBAC roles (owner/admin/artist/reviewer/automation); per‑tenant buckets.
+•	Data Model: tenants, users, projects, scenes, prompts, runs, checkpoints, meshes, materials, textures, LODs, UV maps, refs, citations, exports, audits.
+•	Vector Store: pgvector for embeddings (stylebooks, ref images, taxonomy terms, prompt chunks); hybrid BM25+vector; recency + credibility scores.
+•	RAG Corpus: user style guides, mood boards, shader libraries, topology/retopo guides; quotes/offsets and “as‑of” timestamps preserved.
+•	Agent Graph (LangGraph): Plan → CoarseGen (splat/SDF) → MeshRecon → UVUnwrap → TextureBake → QA & Safety → Optimize → Export → Publish; checkpoints + HIL gates.
+•	Geometry Pipelines: implicit field (SDF) or gaussian splatting to coarse geometry; marching cubes/dual contouring to mesh; remesh/retopo tools; watertightness & manifold checks.
+•	UV & Textures: xatlas/OpenMesh/Trimesh helpers; UDIM optional; texture baking (albedo, normal, roughness, metallic, AO, emissive); denoise & seam‑aware dilation.
+•	Optimization: quadric decimation, LOD chain gen, tangent/bitangent calc, meshopt & Draco compression; glTF KHR_materials_* extensions support.
+•	Similarity & IP Safety: chroma/geometry fingerprints, text‑image embedding distances vs. reference corpus; threshold policies and alternative suggestions.
+•	Provenance: store seeds, model versions, steps, loss curves; attach tool outputs and citations; export provenance JSON in artifact.
+•	Realtime: WebSockets for token/preview streaming (point cloud → splat → mesh); job progress & event bus updates to clients.
+•	Jobs & Queues: Redis streams for generation, baking, optimization, exports; idempotent workers; DLQ; resumable checkpoints.
+•	GPU Workers: dedicated containers with CUDA/cuDNN; PyTorch + Kaolin/PyTorch3D/Open3D; FFmpeg for texture packing; watchdog + autoscaling.
+•	Storage: S3/GCS with signed URLs; WORM bucket for audit/provenance; lifecycle policies; checksum de‑duplication; AV scanning on upload.
+•	API Surface: REST endpoints for sessions/runs, prompts, refs, geometry ops, UV/texture ops, optimization, exports, citations, audits, admin.
+•	Connectors: Asset sources (Google Drive/Dropbox/SharePoint), DCC interchange (Maya/Blender/Unreal/Unity via export webhooks), webhooks with HMAC & idempotency.
+•	Email & Notifications: pipeline events, sign‑off requests, export links; templated emails; optional Slack/Teams webhooks.
+•	Security: HMAC webhook verification; request signing between FE/BE/workers; rate limiting; secrets via KMS/Vault; CSP for preview endpoints.
+•	Governance & Audit: append‑only audit logs of edits/approvals/exports; per‑tenant retention; right‑to‑delete for inputs; provenance bundle on every export.
+2. FRONTEND ARCHITECTURE (extensive)
+•	Stack: Next.js 14 (App Router), React 18, TypeScript, Tailwind, shadcn/ui; react‑three‑fiber + drei for scene graph.
+•	Viewer: WebGL2/WebGPU renderer; HDRI lighting presets; orbit/fly cameras; gizmos (translate/rotate/scale); unit system & scale helpers.
+•	Realtime Preview: progressive render pane (point cloud → splats → mesh); streaming updates via WebSockets; cancel/rollback controls.
+•	Scene Graph Panel: objects/materials/LODs/UV sets; outliner with search; properties inspector with PBR preview and texture slots.
+•	Prompt & Params: brief editor with style tokens; poly budget slider; topology constraints; UDIM toggle; export targets; seed control.
+•	Material & Texture UI: channel packing (ORM/AO), tiling/offset, normal space, triplanar toggle; seam‑aware preview; LUTs.
+•	UV Workspace: unwrap preview, seam painting, texel density visualizer, UDIM tiles browser.
+•	Safety & Provenance UI: similarity meters, policy warnings, citation panel; provenance bundle download before export.
+•	Collaboration: multi‑cursor presence, comments pinned to faces/regions, approvals for mesh/texture/export stages.
+•	Internationalization & A11y: i18n; keyboard shortcuts for modeling tasks; high‑contrast & reduced‑motion modes; WCAG 2.1 AA.
+•	Performance: code‑split editors, SSR for marketing pages, SPA for studio, workerized heavy UI ops (texture previews).
+•	Exports: GLB/gLTF/USDZ (click‑to‑AR on iOS), optional OBJ/FBX; drag‑drop to DCC; one‑click upload to Sketchfab (optional).
+3. DESIGN REQUIREMENTS (UI/UX design based on product & industry)
+•	Creation‑first layout with left prompt pane, center 3D viewport, right inspector; bottom timeline for stages/checkpoints.
+•	Neutral, studio‑grade color palette; subtle micro‑interactions (hover wireframe, seam highlight, gizmo snap hints).
+•	Dark/light themes optimized for long sessions; type scale tuned for inspectors; focus states and status toasts for long jobs.
+•	Clear affordances for scale/units, PBR channel meanings, and export targets to reduce mistakes.
+4. CORE INTEGRATIONS
+•	OpenAI + Claude via LangChain for planning, parameter extraction, and tool calling; structured JSON I/O for graph nodes.
+•	RAG over style guides, shader docs, asset taxonomy, and customer ref libraries (pgvector).
+•	3D Engines/Libs: PyTorch, Kaolin, PyTorch3D, Open3D, Trimesh, xatlas; FFmpeg for texture packing; meshopt/Draco for compression.
+•	Cloud Storage: S3/GCS with signed URLs; email via SES/SendGrid; optional Slack/Teams for approvals.
+5. DELIVERABLES REQUIRED
+•	Next.js 14 studio: Viewer, Prompt & Params, Scene Graph, UV Workspace, Materials, Safety/Provenance, Approvals, Exports.
+•	FastAPI backend with LangGraph pipeline, RAG services, GPU worker containers, similarity/IP safety checks, export service.
+•	PostgreSQL schema + pgvector; ingestion pipelines; Alembic migrations; seed projects with genre/style templates.
+•	WebSockets for progressive previews; audit logging; RBAC/SSO; webhook outbox; deployment configs and OpenAPI docs.
+6. SUCCESS CRITERIA
+•	E2E demo: prompt → progressive preview → mesh → UV → bake PBR → optimize (LODs, compression) → export GLB/USDZ with provenance bundle.
+•	Meshes are manifold & watertight, meet poly budget, and pass viewer validation; textures are correct size/format and channel‑packed.
+•	Similarity/IP safety scores below policy threshold or remediated with alternatives; citations and seeds included on export.
+•	Outputs load in Unity/Unreal/Web/WebAR without material errors; optional auto‑generated thumbnails and turntables.
+7. IMPLEMENTATION GUIDELINES
+•	Structured outputs everywhere. Core schema: {seed, units, scale, polyBudget, lods[], meshURI, uvSets[], textures{albedo,normal,roughness,metallic,ao,emissive}, provenance{models,steps,citations}, safety{similarity,flags}, export{targets[],draco?,meshopt?}}.
+•	Deterministic graph with checkpoints and resumability; human gates before texture bake and export; dry‑run mode in staging.
+•	Prompt hygiene: sanitize inputs, block unsafe/illegal requests; respect stylebook constraints; explicit version pinning of models and DSP toolchains.
+•	Reproducibility: persist seeds and random states; cache intermediates; idempotent workers; checksum artifacts; verify GLTF validator passes before release.
+•	Streaming UX: send small preview geometries early (splat/point) and patch mesh deltas as refinement arrives.
+8. SECURITY & COMPLIANCE
+•	IP Safety: similarity checks vs. reference corpora; denylist sensitive brands/logos; provenance bundle with seeds and citations.
+•	Data Protection: encryption at rest; signed URLs; least‑privilege IAM; secrets in KMS/Vault; audit access to exports.
+•	Supply‑Chain Safety: scan uploads for malicious GLTF/texture payloads; sandbox parsing; strict MIME checks; CSP on viewer endpoints.
+•	User Controls: rights management on generated assets; license metadata tagging; retention + right‑to‑delete for inputs.
+Claude — 5 critical prompts (prebuilt‑architecture aware)
+PROMPT 1 — PROJECT SETUP & ARCHITECTURE
+Extend the existing full‑stack app without overwriting configs. FE: Next.js 14 (TS, Tailwind, shadcn/ui, react‑three‑fiber, React Query). BE: FastAPI (async SQLAlchemy 2.0, Pydantic v2, JWT, RBAC). Data: PostgreSQL + pgvector, Redis. Add a LangGraph pipeline (Plan → CoarseGen → MeshRecon → UVUnwrap → TextureBake → QA/Safety → Optimize → Export → Publish) with HIL gates; provide env templates and Vercel/Render configs.
+
+PROMPT 2 — CORE BACKEND IMPLEMENTATION
+Implement endpoints/services for prompts, runs, checkpoints, geometry (SDF/splats → mesh), UV unwrap, texture bake, optimization (LODs, compression), similarity/IP safety, exports (GLB/gLTF/USDZ), WebSocket progress, provenance/audit logs, and connectors. Add idempotent GPU workers and outbox webhooks.
+
+PROMPT 3 — FRONTEND COMPONENTS & UI
+Build Viewer (react‑three‑fiber), Scene Graph/Inspector, UV Workspace, Materials editor, Prompt & Params panel, Safety/Provenance view, Approvals, and Exports. Maintain WCAG AA, keyboard bindings, progress toasts, and streaming preview from splats to mesh with cancel/rollback.
+
+PROMPT 4 — AI INTEGRATION & FEATURES
+Integrate OpenAI + Claude via LangChain for planning/parameter extraction/tool calls; wire RAG over stylebooks and asset libraries. Enforce structured outputs, attach citations/provenance, run similarity/IP checks with threshold policies, and stream progressive geometry.
+
+PROMPT 5 — DEPLOYMENT & E2E DEMO
+Provision DB/Redis, run migrations, seed demo projects (style guides, refs). Show end‑to‑end: prompt → preview → mesh → UV → bake → optimize → export GLB/USDZ with provenance. Output OpenAPI docs and sample cURL; preserve existing configs.
+
+
+
+
+
+FOLLOW THIS 8 STEP PLAN TO PREPARE THE INFRASTRUCTURE
+-----------------------------------------------------
+
+# 🚀 Claude Fullstack Repo Prep – Optimized 8 Step Plan
+
+  
+The goal: build an extensive frontend + backend scaffold so Claude Code only has to finish ~20% of the work.  
+Each step must be **completed and reviewed** before advancing.
+IMPORTANT: YOU ARE BUILDING ONLY THE INFRASTRUCTURE OF THE APPLICATION NOT THE APPLICATION ITSELF !!!. FOLLOW THE STEPS IN NUMERICAL ORDER !!! starting from step 1.
+You are doing the groundwork for the application, including setting up the folder structure, configuration files, and any necessary boilerplate code.
+IMPORTANT: the checklist in each step has to be checked off 100% before moving to the next step
+
+---
+
+## STEP 1 — Build the Rich Infrastructure
+Create a **deep scaffold** for both frontend and backend so Claude code can recognize the architecture immediately.
+
+- Build a **frontend app shell** with routing, placeholder pages, components, and styling setup.  
+- Build a **backend app shell** with API structure, health endpoint, and config in place.  
+- Include `REPO_MAP.md`, `API_SPEC.md`, and a draft `CLAUDE.md` in the `docs/` folder.  (create the docs folder if it does not exist)
+- Add **TODO markers and folder-level `_INSTRUCTIONS.md`** files so Claude knows exactly where to add logic.
+
+**Deliverables**
+- Frontend app shell with routing, placeholder pages, components, and styling setup  
+- Backend app shell with API structure, health endpoint, and config  
+- `docs/REPO_MAP.md`, `docs/API_SPEC.md` (stub), and draft `docs/CLAUDE.md`  
+- TODO markers + folder-level `_INSTRUCTIONS.md` files  
+
+**Checklist**
+- [ ] Frontend scaffold built  
+- [ ] Backend scaffold built 
+- [ ] Docs folder created with drafts (`REPO_MAP.md`, `API_SPEC.md`, `CLAUDE.md`)  
+- [ ] TODO markers and `_INSTRUCTIONS.md` stubs in place  
+
+---
+
+## STEP 2 — Enrich the Scaffold
+If the repo looks shallow, enrich it so Claude needs fewer leaps of imagination.  
+
+Add:
+- Sample frontend routes and components (`/`, `/about`, `/dashboard`)  
+- Domain model stubs and types/interfaces  
+- Mock data + fixtures for UI flows  
+- README files with quick run instructions for both frontend and backend  
+- Instructions embedded in folders (e.g. `CLAUDE_TASK: …`)
+
+**Deliverables**
+- Sample routes and pages (`/`, `/about`, `/dashboard`)  
+- Domain model stubs and type definitions  
+- Mock data and fixtures for UI flows  
+- README files for frontend and backend with run instructions  
+- Folder-level instructions (`_INSTRUCTIONS.md`)  
+
+**Checklist**
+- [ ] At least 2–3 sample routes/pages exist  
+- [ ] Domain types/interfaces stubbed out  
+- [ ] Mock data + fixtures included  
+- [ ] README_FRONTEND.md and README_BACKEND.md added  
+- [ ] Each folder has `_INSTRUCTIONS.md` where relevant 
+
+---
+
+## STEP 3 — Audit for Alignment
+Check that the scaffold actually matches the product brief, tech specs, and UX goals.
+Add additional UI/UX elements (if needed) to make the application visually appealing (and update the design requirements after that)
+
+- Do navigation and pages reflect the product’s main flows?  
+- Do API endpoints match the UI needs?  
+- Is the chosen tech stack consistent (no unused or conflicting libraries)?  
+- Is the UX direction reflected (design tokens, layout, component stubs)?
+
+**Deliverables**
+- Alignment review across Product ↔ UI/UX ↔ Tech  
+- Identify any missing flows, mismatched libraries, or conflicting instructions  
+
+**Checklist**
+- [ ] Navigation structure matches product journeys  
+- [ ] Components/pages map to required features  
+- [ ] API endpoints cover MVP needs  
+- [ ] No contradictory or unused technologies  
+
+---
+
+## STEP 4 — Document the Architecture
+Now make the docs **Claude-ready**:
+
+- **REPO_MAP.md**: Full repo breakdown with roles of each folder  
+- **API_SPEC.md**: Endpoints, payloads, error handling  
+- **CLAUDE.md**: Editing rules, coding conventions, AI collaboration guidelines  
+
+These three files are the **context backbone** Claude will use to understand the repo.
+
+**Deliverables**
+- `REPO_MAP.md`: full repo breakdown with folder purposes  
+- `API_SPEC.md`: endpoints, models, error conventions  
+- `CLAUDE.md`: collaboration rules, editing boundaries  
+
+**Checklist**
+- [ ] REPO_MAP.md fully describes structure  
+- [ ] API_SPEC.md covers all MVP endpoints and schemas  
+- [ ] CLAUDE.md includes project overview, editing rules, examples  
+
+---
+
+## STEP 5 — Improve the Prompt
+Enhance the prompt (in `docs/PROMPT_DECLARATION.md`) with details Claude needs:
+
+- FE/BE boundaries and data contracts  
+- UX guidelines (states, accessibility, interaction patterns)  
+- Performance budgets (bundle size, API latency)  
+- Security constraints (auth, rate limits, PII handling)  
+- Testing expectations (unit, integration, end-to-end)
+
+**Deliverables**
+- FE/BE boundaries and contracts  
+- UX guidelines (states, accessibility, patterns)  
+- Performance budgets (bundle size, latency targets)  
+- Security constraints (auth, PII, rate limits)  
+- Testing expectations  
+
+**Checklist**
+- [ ] Prompt includes FE/BE division of responsibility  
+- [ ] UX principles and design tokens specified  
+- [ ] Performance/security/testing requirements added  
+- [ ] Prompt is concrete and actionable for Claude  
+
+---
+
+## STEP 6 — Expert Audit of the Prompt
+Now do a **meticulous audit** of the one-page prompt declaration.
+
+- Add Frontend Architecture, Backend Architecture, Design requirements, Core Integrations, Success Criteria, Implementation Guidelines and Security & Compliance categories from this Project Brief to the prompt declaration.
+- Remove inconsistencies, duplicates, or unused technologies  
+- Ensure Tech Stack → Product → Scaffold alignment (no mismatches)  
+- Add UI/UX details that make the product visually appealing and usable  
+- Double-check frontend and backend folders are ready  
+- Confirm editing boundaries are clear (what Claude can/can’t touch)  
+- Make the declaration **battle-tested and handoff-ready**
+
+**Deliverables**
+- Remove inconsistencies/duplicates  
+- Ensure stack ↔ product ↔ scaffold alignment  
+- Add UI/UX and accessibility details  
+- Clarify file boundaries (editable vs do-not-touch)  
+- Confirm prompt uses Claude-friendly syntax  
+
+**Checklist**
+- [ ] No unused or contradictory tech remains  
+- [ ] UI/UX directives are product-specific and sufficient  
+- [ ] Editing boundaries explicitly defined  
+- [ ] Prompt syntax uses clear, imperative instructions  
+
+---
+
+## STEP 7 — Bird’s-Eye Repo Review
+Do a quick top-level scan for missing pieces:
+
+- All folders contain either code or `_INSTRUCTIONS.md`  
+- `.env.example` files exist for both frontend and backend  
+- CI/CD config is present and not trivially broken  
+- Run scripts (`npm run dev`, `uvicorn …`) work end-to-end  
+- No orphan TODOs without clear ownership
+
+**Deliverables**
+- Verify all core files exist  
+- Confirm environment, CI, and scripts work end-to-end  
+
+**Checklist**
+- [ ] Every folder has code or `_INSTRUCTIONS.md`  
+- [ ] `.env.example` present for both frontend and backend  
+- [ ] CI pipeline triggers and passes basic checks  
+- [ ] Dev script (`scripts/dev.sh`) runs both FE and BE  
+
+---
+
+## STEP 8 — Finalize CLAUDE.md
+This is where Claude gets its **onboarding pack**. Make sure `CLAUDE.md` includes:
+
+- **Project Overview**: one-paragraph purpose, stack, goals, target users  
+- **Folder & File Structure**: what’s editable vs do-not-touch  
+- **Coding Conventions**: style guides, naming rules, commenting expectations  
+- **AI Collaboration Rules**: response format, edit rules, ambiguity handling  
+- **Editing Rules**: full-file vs patches, locked files  
+- **Dependencies & Setup**: frameworks, services, env vars  
+- **Workflow & Tools**: how to run locally, FE/BE boundary, deployment notes  
+- **Contextual Knowledge**: product quirks, domain rules, business logic caveats  
+- **Examples**: good vs bad AI answer
+
+**Deliverables**
+- Project overview (purpose, stack, goals, users)  
+- Folder & file structure with editable vs do-not-touch  
+- Coding conventions (style, naming, commenting)  
+- AI collaboration rules (response style, edit rules, ambiguity handling)  
+- Dependencies and setup instructions  
+- Workflow, deployment notes, contextual knowledge  
+- Good vs bad answer examples  
+- Fill out all the missing information in the CLAUDE.md file
+
+**Checklist**
+- [ ] Project overview section filled in  
+- [ ] File boundaries clearly defined  
+- [ ] Coding/style conventions included  
+- [ ] AI collaboration & editing rules written  
+- [ ] Dependencies & env notes covered  
+- [ ] Workflow & deployment info added  
+- [ ] Contextual knowledge documented  
+- [ ] Good vs bad examples included  
+- [ ] CLAUDE.md file does not miss any important information
+
+---
+
+# ✅ Outcome
+When this 8-step plan is followed:
+- The repo is a **rich, opinionated scaffold** (80% done).  
+- Docs give Claude **clear boundaries + context**.  
+- The one-page prompt is **battle-tested** and aligned.  
+- Claude Code can safely and efficiently generate the missing 20%.  
+
+
+
+
+

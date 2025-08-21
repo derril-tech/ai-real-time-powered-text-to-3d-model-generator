@@ -1,0 +1,86 @@
+name: VoxelVerve CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-frontend:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm ci
+    
+    - name: Run frontend type check
+      run: |
+        cd frontend
+        npm run type-check
+    
+    - name: Run frontend linting
+      run: |
+        cd frontend
+        npm run lint
+    
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm run build
+
+  test-backend:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        pip install -r requirements.txt
+    
+    - name: Run backend type checking
+      run: |
+        cd backend
+        python -m mypy app/ --ignore-missing-imports
+    
+    - name: Run backend linting
+      run: |
+        cd backend
+        python -m flake8 app/ --max-line-length=88 --ignore=E203,W503
+    
+    - name: Test backend imports
+      run: |
+        cd backend
+        python -c "import app.main; print('✅ Backend imports successfully')"
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run security scan
+      uses: github/codeql-action/init@v2
+      with:
+        languages: javascript, python
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
